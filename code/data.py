@@ -7,6 +7,8 @@ Created on Tue Jan 03 17:00:09 2017
 
 import pandas as pd
 
+import numpy as np
+
 class ReadClass():
     dataType = "train"
     dirPath = "K:\match\\"
@@ -50,6 +52,38 @@ class ReadClass():
         IndexName = ["用户id","性别","职业","教育程度","婚姻状态","户口类型"]
         return pd.read_csv(self.dirPath +self.dataType + "\\user_info_" + self.dataType + ".txt", names = IndexName, header = None)
 
+
+class FeaturesClass():
+    timeStages = []
+    maxOperators = {}
+    sumOperators = {}
+    countOperator = {}
+    def __init__(self):
+        pass
+    
+    def addTime(self, time):
+        if(len(time)==2):
+            self.timeStage.append(time)
+        else:
+            print("time请设置为二维时间点")
+    
+    def addMaxOperator(self, column):
+        self.maxOperators[column] = np.max
+
+    def getMaxOperator(self):
+        return self.maxOperators
+    
+    def addSumOperator(self, column):
+        self.sumOperators[column] = np.sum
+        
+    def getSumOperator(self):
+        return self.sumOperators
+        
+    def addCountOperator(self, column):
+        self.countOperators[column] = np.count_nonzero
+
+    def getCountOperator(self):
+        return self.countOperator        
 
 
 if __name__=="__main__":
