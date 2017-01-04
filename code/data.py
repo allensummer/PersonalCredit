@@ -9,9 +9,11 @@ import pandas as pd
 
 import numpy as np
 
+import sklearn as sk
+
 class ReadClass():
     dataType = "train"
-    dirPath = "K:\match\\"
+    dirPath = ".\\"
     
     def __init__(self, dataType):
         self.dataType = dataType
@@ -19,7 +21,7 @@ class ReadClass():
     #读取银行数据
     def get_bank_detail(self):
         #时间戳进行了函数变化，
-        IndexName = ["用户id","时间戳","交易类型","交易金额","工资收入标记"]
+        IndexName = ["id","time","交易类型","交易金额","工资收入标记"]
         return pd.read_csv(self.dirPath +self.dataType + "\\bank_detail_" + self.dataType + ".txt", names = IndexName, header = None)
     
     #信用卡账单记录
@@ -43,14 +45,18 @@ class ReadClass():
     #逾期用户
     def get_overdue(self):
         #时间戳进行了函数变化，
-        IndexName = ["用户id","样本标签"]
+        IndexName = ["id","exceed_label"]
         return pd.read_csv(self.dirPath +self.dataType + "\\overdue_" + self.dataType + ".txt", names = IndexName, header = None)
 
     #逾期用户
     def get_user_info(self):
         #时间戳进行了函数变化，
-        IndexName = ["用户id","性别","职业","教育程度","婚姻状态","户口类型"]
-        return pd.read_csv(self.dirPath +self.dataType + "\\user_info_" + self.dataType + ".txt", names = IndexName, header = None)
+        IndexName = ["id","gender","profession","education","marry","acount_type"]
+        return pd.read_csv(self.dirPath + self.dataType + "\\user_info_" + self.dataType + ".txt", names = IndexName, header = None)
+
+    def get_usersID(self):
+        IndexName = ["id"]
+        return pd.read_csv(self.dirPath + self.dataType + "\\usersID_" + self.dataType + ".txt", names = IndexName, header = None)
 
 
 class FeaturesClass():
@@ -85,18 +91,48 @@ class FeaturesClass():
     def getCountOperator(self):
         return self.countOperator        
 
+def BinaryDataBalance(data, label, rate):
+    positive = data[data[label]==1.0]
+    negtive = data[data[label]== 0.0]
 
+    pieces = [negtive.sample(int(len(positive)*rate)), positive]
+
+    return pd.concat(pieces)
+    
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score
+from sklearn import svm
 if __name__=="__main__":
     data = ReadClass("train")
-    a = data.get_bank_detail();
-    a.head()
-    a = data.get_bill_detail();
-    a.head()
-    a = data.get_browse_history();
-    a.head()
-    a = data.get_loan_time();
-    a.head()
-    a = data.get_overdue();
-    a.head()
-    a = data.get_user_info();
-    a.head();
+    overdue = data.get_overdue();
+    user_info = data.get_user_info();
+    train = pd.merge(user_info, overdue,left_on='id', right_index=True,
+                      how='left', sort=False).fillna(0);
+    train = BinaryDataBalance(train, "exceed_label", 1.1)
+    print len(train)
+    #分类模型
+    #随机森林
+    clf = clf = RandomForestClassifier(n_estimators=10, max_depth=3,
+     min_samples_split=2, random_state=0)
+    #svm
+#    clf = svm.SVC(probability = True)    
+    
+    
+    scores = cross_val_score(clf, train.loc[:, ["gender","profession","education","marry","acount_type"]], train['exceed_label'])
+
+    print scores.mean()  
+    clf = clf.fit(train.loc[:, ["gender","profession","education","marry","acount_type"]], train['exceed_label'])    
+    
+    
+    test_data = ReadClass("test")
+    #test_user = test_data.get_usersID()
+    test_user_info = test_data.get_user_info()
+    #test = pd.merge(test_user, test_user_info,left_on='id', right_index=True,
+     #                 how='left', sort=False).fillna(0);
+    test_user_info['prediction'] = clf.predict(test_user_info.loc[:, ["gender","profession","education","marry","acount_type"]])
+    print len(test_user_info)
+    print np.sum(test_user_info['prediction'])
+    
+    test_user_info.loc[:, ["id", "prediction"]].to_csv("pred.csv", index = False, header = False)
+    
+    
