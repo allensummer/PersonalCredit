@@ -77,51 +77,41 @@ class ReadClass():
         data['loan'] = self.get_loan_time()
         data['user_info'] = self.get_user_info()
         #训练集与测试集不一样的地方        
-        data['user_id'] = self.get_usersID()
-        
-        
-class FeaturesConfigurationClass():
-    timeStages = {}
-    maxOperators = {}
-    sumOperators = {}
-    countOperator = {}
-    maxTime = 0
-    def __init__(self, maxTime):
-        self.maxTime = maxTime
-    
-    def addTime(self, time_name, time):
-        if(len(time)==2):
-            self.timeStage[time_name] = time
-        else:
-            print("time请设置为二维时间点")
-    
-    def addMaxOperator(self, column, table):
-        if table in self.maxOperators.keys():
-            self.maxOperators[table].append(column)
-        else:
-            self.maxOperators[table] = [column]
-    def addSumOperator(self, column, table):
-        if table in self.sumOperators.keys():
-            self.sumOperators[table].append(column)
-        else:
-            self.sumOperators[table] = [column]
-        
-    def addCountOperator(self, column, table):
-        if table in self.countOperators.keys():
-            self.countOperators[table].append(column)
-        else:
-            self.countOperators[table] = [column]
-
+        data['user_id'] = self.get_usersID()    
 
 class FeatureExtractor():
     feature = None
-    def __init__(self, feature):
-        self.feature = feature
+    timeStages = {}
+    simpleFeature = {}
+    data = None;
+    def add_time(self, time_name, time):
+        if(len(time)==2):
+            self.timeStages[time_name] = time
+        else:
+            print("time请设置为二维时间点")
     
-    def get_max_feature(self):
-        agg = []
-        
-        
+    def add_simple_operator(self, table, column,  operate):
+        if table in self.simpleFeature.keys():
+            self.simpleFeature[table][column].append(operate)
+        else:
+            self.simpleFeature[table] = {column:[operate]}
+    
+    def set_data(self, data, maxTime):
+        self.data = data
+        for i in self.data.keys():
+            self.data[i]['time'] = maxTime - data[i]['time'] 
+    
+    def get_simple_feature(self, tableName):
+        agg_data = []
+        for i in self.timeStages.keys():
+            if tableName in self.simpleFeature.keys():
+                data_buf = self.data[tableName]
+                data_buf = data_buf[data_buf['time'] >= self.timeStages[i][0]]
+                data_buf = data_buf[data_buf['time'] < self.timeStages[i][1]].groupby('id').agg(self.simpleFeature[tableName])
+                agg_data.append(data_buf)
+            else:
+                print("没有表" + tableName)
+        return agg_data
     
 def BinaryDataBalance(data, label, rate):
     positive = data[data[label]==1.0]
@@ -130,6 +120,27 @@ def BinaryDataBalance(data, label, rate):
     pieces = [negtive.sample(int(len(positive)*rate)), positive]
 
     return pd.concat(pieces)
+    
+
+if __name__=="__main__":
+    readData = ReadClass("train")
+    overdue = readData.get_overdue();
+    bank_detail = readData.get_bank_detail();
+    
+    data = {"bank_detail": bank_detail}
+        
+    feature = FeatureExtractor()
+    feature.set_data(data, 5928982961)
+    
+    feature.add_time("1", [0, 200000000])
+    
+    
+    feature.add_simple_operator("bank_detail", "jiaoyi_jin_e", np.max)
+    feature.add_simple_operator("bank_detail", "jiaoyi_jin_e", np.sum)
+    
+    a = feature.get_simple_feature("bank_detail")
+    
+    
     
 #from sklearn.ensemble import RandomForestClassifier
 #from sklearn.model_selection import cross_val_score
@@ -170,12 +181,3 @@ def BinaryDataBalance(data, label, rate):
 #    
 #    test_user_info.loc[:, ["id", "prediction"]].to_csv("pred.csv", index = False, header = False)
 #    
-if __name__=="__main__":
-    data = ReadClass("train")
-    overdue = data.get_overdue();
-    user_info = data.get_bank_detail();
-def get_letter_type(letter):
- if letter.lower() in 'aeiou':
-     return 'vowel'
- else:
-     return 'consonant'
